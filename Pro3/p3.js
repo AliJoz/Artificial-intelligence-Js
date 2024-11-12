@@ -24,8 +24,12 @@ const heuristic = (state) => {
     Math.abs(sumRod1 - sumRod3),
     Math.abs(sumRod2 - sumRod3)
   );
-
-  return minDifference;
+  const mincolumn = Math.min(
+    sumRod1,
+    sumRod2,
+    sumRod3  
+  );
+  return Math.max(minDifference,mincolumn);
 };
 const isGoal = (state) => {
   const [rod1, rod2, rod3] = state;
@@ -49,20 +53,19 @@ const getBestNeighbors = (state) => {
     for (let j = 0; j < 3; j++) {
       if (i !== j && rods[i].length > 0) {
         const newState = [rod1.slice(), rod2.slice(), rod3.slice()];
-        const num = newState[i].pop();
+        const num = newState[i].pop();      
         newState[j].push(num);
 
-        const newSums = [...sums];
-        newSums[i] -= num;
-        newSums[j] += num;
+        const moveCost = num;        
 
-        neighbors.push({ state: newState, priority: heuristic(newState) });
+        neighbors.push({ state: newState, priority: heuristic(newState), moveCost });
       }
     }
   }
 
-  return neighbors.sort((a, b) => a.priority - b.priority).map(n => n.state);
+  return neighbors.sort((a, b) => a.priority - b.priority).map(n => ({ state: n.state, moveCost: n.moveCost }));
 };
+
 const aStar = (startState) => {
   const pq = new PriorityQueue((a, b) => a.priority - b.priority);
   pq.enqueue({ state: startState, cost: 0, priority: heuristic(startState), path: [startState] });
@@ -77,15 +80,23 @@ const aStar = (startState) => {
 
     visited.add(JSON.stringify(currentState));
     for (const neighbor of getBestNeighbors(currentState)) {
-      if (!visited.has(JSON.stringify(neighbor))) {
-        const newCost = cost + 1;
-        pq.enqueue({ state: neighbor, cost: newCost, priority: newCost + heuristic(neighbor), path: [...path, neighbor] });
+      const { state: neighborState, moveCost } = neighbor;
+      const newCost = cost + moveCost;  // محاسبه هزینه بر اساس وزن وزنه
+
+      if (!visited.has(JSON.stringify(neighborState))) {
+        pq.enqueue({ 
+          state: neighborState, 
+          cost: newCost, 
+          priority: newCost + heuristic(neighborState), 
+          path: [...path, neighborState] 
+        });
       }
     }
   }
 
   return null;
 };
+
 
 const startState = readFile('input.txt');
 const solution = aStar(startState);
@@ -105,6 +116,7 @@ if (solution) {
   console.log("----------------------------------------");
   console.log(`Both sums are equal: ${sumRod1 === sumRod2 || sumRod1 === sumRod3 || sumRod2 === sumRod3}`);
   console.log(`Heuristic was calculated ${heuristicCount} times.`);
+  console.log(`\ncost:${solutionCost}\n`)
   console.log("Path of moves:");
   path.forEach((state, index) => {
     console.log(`Step ${index}:`);
