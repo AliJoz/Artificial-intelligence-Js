@@ -1,0 +1,13 @@
+{
+  "name": "frontes",
+  "version": "1.0.0",
+  "main": "P4.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+     "start": "nodemon p4.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}

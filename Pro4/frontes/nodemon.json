@@ -1,0 +1,7 @@
+{
+    "watch": ["P4.js", "input2.txt"],
+    "ext": "js txt",
+    "ignore": ["node_modules"],
+    "exec": "node P4.js"
+  }
+  

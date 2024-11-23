@@ -1,10 +1,10 @@
-const fs = require('fs');
-const { PriorityQueue } = require('@datastructures-js/priority-queue');
+const fs = require("fs");
+const { PriorityQueue } = require("@datastructures-js/priority-queue");
 
 const readFile = (filename) => {
-  const fileContent = fs.readFileSync(filename, 'utf8');
-  const lines = fileContent.trim().split('\n');
-  return lines.map(line => line.split(' ').map(Number));
+  const fileContent = fs.readFileSync(filename, "utf8");
+  const lines = fileContent.trim().split("\n");
+  return lines.map((line) => line.split(" ").map(Number));
 };
 
 const calculateSum = (rod) => {
@@ -24,12 +24,14 @@ const heuristic = (state) => {
     Math.abs(sumRod1 - sumRod3),
     Math.abs(sumRod2 - sumRod3)
   );
-  const mincolumn = Math.min(
-    sumRod1,
-    sumRod2,
-    sumRod3  
-  );
-  return Math.max(minDifference,mincolumn);
+  const maxDifference =
+    Math.max(
+      Math.abs(sumRod1 - sumRod2),
+      Math.abs(sumRod1 - sumRod3),
+      Math.abs(sumRod2 - sumRod3)
+    ) / 2;
+  const mincolumn = Math.min(sumRod1, sumRod2, sumRod3);
+  return Math.max(minDifference, mincolumn, maxDifference);
 };
 const isGoal = (state) => {
   const [rod1, rod2, rod3] = state;
@@ -53,22 +55,33 @@ const getBestNeighbors = (state) => {
     for (let j = 0; j < 3; j++) {
       if (i !== j && rods[i].length > 0) {
         const newState = [rod1.slice(), rod2.slice(), rod3.slice()];
-        const num = newState[i].pop();      
+        const num = newState[i].pop();
         newState[j].push(num);
 
-        const moveCost = num;        
+        const moveCost = num;
 
-        neighbors.push({ state: newState, priority: heuristic(newState), moveCost });
+        neighbors.push({
+          state: newState,
+          priority: heuristic(newState),
+          moveCost,
+        });
       }
     }
   }
 
-  return neighbors.sort((a, b) => a.priority - b.priority).map(n => ({ state: n.state, moveCost: n.moveCost }));
+  return neighbors
+    .sort((a, b) => a.priority - b.priority)
+    .map((n) => ({ state: n.state, moveCost: n.moveCost }));
 };
 
 const aStar = (startState) => {
   const pq = new PriorityQueue((a, b) => a.priority - b.priority);
-  pq.enqueue({ state: startState, cost: 0, priority: heuristic(startState), path: [startState] });
+  pq.enqueue({
+    state: startState,
+    cost: 0,
+    priority: heuristic(startState),
+    path: [startState],
+  });
 
   const visited = new Set();
 
@@ -81,14 +94,14 @@ const aStar = (startState) => {
     visited.add(JSON.stringify(currentState));
     for (const neighbor of getBestNeighbors(currentState)) {
       const { state: neighborState, moveCost } = neighbor;
-      const newCost = cost + moveCost;  // محاسبه هزینه بر اساس وزن وزنه
+      const newCost = cost + moveCost; // محاسبه هزینه بر اساس وزن وزنه
 
       if (!visited.has(JSON.stringify(neighborState))) {
-        pq.enqueue({ 
-          state: neighborState, 
-          cost: newCost, 
-          priority: newCost + heuristic(neighborState), 
-          path: [...path, neighborState] 
+        pq.enqueue({
+          state: neighborState,
+          cost: newCost,
+          priority: newCost + heuristic(neighborState),
+          path: [...path, neighborState],
         });
       }
     }
@@ -97,8 +110,7 @@ const aStar = (startState) => {
   return null;
 };
 
-
-const startState = readFile('input.txt');
+const startState = readFile("input.txt");
 const solution = aStar(startState);
 if (solution) {
   const { state: solutionState, cost: solutionCost, path } = solution;
@@ -114,9 +126,13 @@ if (solution) {
   console.log(`Sum of Rod 2: ${sumRod2}`);
   console.log(`Sum of Rod 3: ${sumRod3}`);
   console.log("----------------------------------------");
-  console.log(`Both sums are equal: ${sumRod1 === sumRod2 || sumRod1 === sumRod3 || sumRod2 === sumRod3}`);
+  console.log(
+    `Both sums are equal: ${
+      sumRod1 === sumRod2 || sumRod1 === sumRod3 || sumRod2 === sumRod3
+    }`
+  );
   console.log(`Heuristic was calculated ${heuristicCount} times.`);
-  console.log(`\ncost:${solutionCost}\n`)
+  console.log(`\ncost:${solutionCost}\n`);
   console.log("Path of moves:");
   path.forEach((state, index) => {
     console.log(`Step ${index}:`);
