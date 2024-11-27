@@ -8,11 +8,9 @@ const PORT = 3000;
 app.use(cors());
 app.use(express.json());
 
-
 const config = {
-  timerDuration: 20, 
+  timerDuration: 60, 
 };
-
 
 function calculateDifference(workerTimes) {
   const maxTime = Math.max(...workerTimes);
@@ -20,34 +18,31 @@ function calculateDifference(workerTimes) {
   return maxTime - minTime;
 }
 
-
 function hillClimbingWithGhosts(
   numTasks,
   numWorkers,
   taskTimes,
   workerCapability,
   maxIterations = 1000,
-  numGhosts = 50
+  numGhosts = 50,
+  maxBadSteps = 5 
 ) {
-  let assignments = Array(numTasks).fill(-1); 
-  let workerTimes = Array(numWorkers).fill(0); 
+  let assignments = Array(numTasks).fill(-1);
+  let workerTimes = Array(numWorkers).fill(0);
 
- 
   const possibleWorkersForTask = Array.from({ length: numTasks }, (_, task) =>
     Array.from({ length: numWorkers }, (_, worker) => worker).filter(
       (worker) => workerCapability[task][worker] === 1
     )
   );
 
-
   for (let task = 0; task < numTasks; task++) {
     const possibleWorkers = possibleWorkersForTask[task];
     if (possibleWorkers.length > 0) {
-      const chosenWorker = possibleWorkers.reduce((minWorker, worker) =>
-        workerTimes[worker] < workerTimes[minWorker] ? worker : minWorker
-      );
-      assignments[task] = chosenWorker;
-      workerTimes[chosenWorker] += taskTimes[task];
+      const randomWorker =
+        possibleWorkers[Math.floor(Math.random() * possibleWorkers.length)];
+      assignments[task] = randomWorker;
+      workerTimes[randomWorker] += taskTimes[task];
     }
   }
 
@@ -61,9 +56,14 @@ function hillClimbingWithGhosts(
     assignments: [...assignments],
     workerTimes: [...workerTimes],
     bestDifference: bestDifference,
+    badSteps: 0, 
   }));
 
+  const startTime = Date.now();
+
   for (let iteration = 0; iteration < maxIterations; iteration++) {
+    if ((Date.now() - startTime) / 1000 > config.timerDuration) break;
+
     ghosts.forEach((ghost) => {
       const task = Math.floor(Math.random() * numTasks);
       const currentWorker = ghost.assignments[task];
@@ -84,6 +84,7 @@ function hillClimbingWithGhosts(
 
       if (newDifference < ghost.bestDifference) {
         ghost.bestDifference = newDifference;
+        ghost.badSteps = 0; 
 
         if (newDifference < bestDifference) {
           bestDifference = newDifference;
@@ -91,11 +92,25 @@ function hillClimbingWithGhosts(
           assignments = [...ghost.assignments];
         }
       } else {
-        ghost.workerTimes[newWorker] -= taskTimes[task];
-        ghost.workerTimes[currentWorker] += taskTimes[task];
-        ghost.assignments[task] = currentWorker;
+        ghost.badSteps++; 
+        if (ghost.badSteps >= maxBadSteps) {
+          
+          ghost.badSteps = 0;
+          ghost.assignments[task] = currentWorker;
+          ghost.workerTimes[newWorker] -= taskTimes[task];
+          ghost.workerTimes[currentWorker] += taskTimes[task];
+        } else {
+          ghost.workerTimes[newWorker] -= taskTimes[task];
+          ghost.workerTimes[currentWorker] += taskTimes[task];
+          ghost.assignments[task] = currentWorker;
+        }
       }
     });
+
+      console.log(
+        `Iteration: ${iteration}, Best Difference: ${bestDifference}`
+      );
+    
   }
 
   return {
@@ -108,7 +123,6 @@ function hillClimbingWithGhosts(
   };
 }
 
-////////// Api
 app.get("/config", (req, res) => {
   res.json(config);
 });
@@ -138,7 +152,6 @@ app.get("/run", (req, res) => {
   });
 });
 
-// راه‌اندازی سرور  PORT 3000
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
